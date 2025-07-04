@@ -1,4 +1,5 @@
 package com.codewithprojects.springsecurity.dto;
+import com.codewithprojects.springsecurity.entities.Turf;
 import com.codewithprojects.springsecurity.entities.TurfStatus;
 import lombok.*;
 
@@ -14,8 +15,19 @@ public class TurfResponseDto {
     private String location;
     private List<String> sportsSupported;
     private Double pricePerHour;
-    private List<String> availableSlots;
     private TurfStatus status;
-    private Long ownerId; // Or ownerId if you prefer
+    private String ownerEmail;
 
+    public static TurfResponseDto fromEntity(Turf turf) {
+        return TurfResponseDto.builder()
+                .id(turf.getId())
+                .name(turf.getName())
+                .location(turf.getLocation())
+                .sportsSupported(turf.getSportsSupported())
+                .pricePerHour(turf.getPricePerHour())
+                .status(turf.getStatus())
+                .ownerEmail(turf.getOwner().getEmail())
+                .build();
+    }
 }
+

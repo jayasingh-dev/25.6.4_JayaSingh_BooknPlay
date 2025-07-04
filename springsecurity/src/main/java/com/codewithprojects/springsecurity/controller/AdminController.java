@@ -2,6 +2,7 @@ package com.codewithprojects.springsecurity.controller;
 
 import com.codewithprojects.springsecurity.entities.User;
 import com.codewithprojects.springsecurity.services.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

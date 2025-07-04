@@ -5,11 +5,14 @@ import com.codewithprojects.springsecurity.dto.TurfRequestDto;
 import com.codewithprojects.springsecurity.dto.TurfResponseDto;
 import com.codewithprojects.springsecurity.entities.Turf;
 import com.codewithprojects.springsecurity.entities.User;
+import com.codewithprojects.springsecurity.exception.BookingException;
 import com.codewithprojects.springsecurity.repository.TurfRepository;
 import com.codewithprojects.springsecurity.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -18,31 +21,78 @@ public class TurfService {
     private final TurfRepository turfRepository;
     private final UserRepository userRepository;
 
-    public TurfResponseDto createTurfForOwner(TurfRequestDto dto, String username) {
-        User owner = userRepository.findByEmail(username)
-                .orElseThrow(() -> new RuntimeException("Owner not found"));
+//    public TurfResponseDto createTurfForOwner(TurfRequestDto dto, String username) {
+//        User owner = userRepository.findByEmail(username)
+//                .orElseThrow(() -> new RuntimeException("Owner not found"));
+//
+//        Turf turf = Turf.builder()
+//                .name(dto.getName())
+//                .location(dto.getLocation())
+//                .sportsSupported(dto.getSportsSupported())
+//                .pricePerHour(dto.getPricePerHour())
+//                .availableSlots(dto.getAvailableSlots())
+//                .status(dto.getStatus())
+//                .owner(owner)
+//                .build();
+//
+//        Turf saved = turfRepository.save(turf);
+//
+//        return TurfResponseDto.builder()
+//                .id(saved.getId())
+//                .name(saved.getName())
+//                .location(saved.getLocation())
+//                .sportsSupported(saved.getSportsSupported())
+//                .pricePerHour(saved.getPricePerHour())
+//                .availableSlots(saved.getAvailableSlots())
+//                .status(saved.getStatus())
+//                .ownerId(saved.getOwner().getId())
+//                .build();
+//    }
 
+
+
+    public TurfResponseDto createTurfForOwner(TurfRequestDto request, String ownerEmail) {
+        User owner = userRepository.findByEmail(ownerEmail)
+                .orElseThrow(() -> new BookingException("Owner not found"));
         Turf turf = Turf.builder()
-                .name(dto.getName())
-                .location(dto.getLocation())
-                .sportsSupported(dto.getSportsSupported())
-                .pricePerHour(dto.getPricePerHour())
-                .availableSlots(dto.getAvailableSlots())
-                .status(dto.getStatus())
+                .name(request.getName())
+                .location(request.getLocation())
                 .owner(owner)
+                .sportsSupported(request.getSportsSupported())
+                .pricePerHour(request.getPricePerHour())
+                .status(request.getStatus())
                 .build();
+        turfRepository.save(turf);
+        return TurfResponseDto.fromEntity(turf);
+    }
 
-        Turf saved = turfRepository.save(turf);
+    public TurfResponseDto updateTurfForOwner(Long turfId, TurfRequestDto request, String ownerEmail) {
+        Turf turf = turfRepository.findById(turfId)
+                .orElseThrow(() -> new BookingException("Turf not found"));
+        if (!turf.getOwner().getEmail().equals(ownerEmail)) {
+            throw new BookingException("Not your turf");
+        }
+        turf.setName(request.getName());
+        turf.setLocation(request.getLocation());
+        turf.setSportsSupported(request.getSportsSupported());
+        turf.setPricePerHour(request.getPricePerHour());
+        turf.setStatus(request.getStatus());
+        turfRepository.save(turf);
+        return TurfResponseDto.fromEntity(turf);
+    }
 
-        return TurfResponseDto.builder()
-                .id(saved.getId())
-                .name(saved.getName())
-                .location(saved.getLocation())
-                .sportsSupported(saved.getSportsSupported())
-                .pricePerHour(saved.getPricePerHour())
-                .availableSlots(saved.getAvailableSlots())
-                .status(saved.getStatus())
-                .ownerId(saved.getOwner().getId())
-                .build();
+    public void deleteTurfForOwner(Long turfId, String ownerEmail) {
+        Turf turf = turfRepository.findById(turfId)
+                .orElseThrow(() -> new BookingException("Turf not found"));
+        if (!turf.getOwner().getEmail().equals(ownerEmail)) {
+            throw new BookingException("Not your turf");
+        }
+        turfRepository.delete(turf);
+    }
+
+    public List<TurfResponseDto> getAllTurfs() {
+        return turfRepository.findAll().stream()
+                .map(TurfResponseDto::fromEntity)
+                .collect(Collectors.toList());
     }
 }

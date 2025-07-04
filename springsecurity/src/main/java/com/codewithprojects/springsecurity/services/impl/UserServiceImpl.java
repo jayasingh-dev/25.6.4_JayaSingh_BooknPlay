@@ -6,6 +6,8 @@ import com.codewithprojects.springsecurity.entities.User;
 import com.codewithprojects.springsecurity.repository.UserRepository;
 import com.codewithprojects.springsecurity.services.UserService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -14,10 +16,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-
 @Service
-
 public class UserServiceImpl implements UserService {
+
+    private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -26,34 +28,42 @@ public class UserServiceImpl implements UserService {
     public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        logger.info("UserServiceImpl initialized");
     }
 
     @Override
     public UserDetailsService userDetailsService() {
-        // Your existing logic
+        logger.debug("userDetailsService called");
         return email -> userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> {
+                    logger.warn("User not found with email: {}", email);
+                    return new RuntimeException("User not found");
+                });
     }
+
     @Override
     public User registerUser(User user) {
         Role requestedRole = user.getRole();
         if (requestedRole != Role.USER && requestedRole != Role.OWNER) {
+            logger.error("Invalid role for registration: {}", requestedRole);
             throw new IllegalArgumentException("Invalid role for registration. Only USER or OWNER allowed.");
         }
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        User savedUser = userRepository.save(user);
+        logger.info("User registered with id: {}", savedUser.getId());
+        return savedUser;
+    }
+
+    @Override
+    public User createUser(User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
 
     @Override
-    public User createUser(User user) {
-        return userRepository.save(user);
-    }
-
-    @Override
     public Optional<User> getUserById(Long id) {
-        return Optional.empty();
+        return userRepository.findById(id);
     }
-
 
     @Override
     public List<User> getAllUsers() {
@@ -69,8 +79,10 @@ public class UserServiceImpl implements UserService {
         user.setEmail(userDetails.getEmail());
         user.setRole(userDetails.getRole());
         if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
-            user.setPassword(userDetails.getPassword());
+            // Always encode the password before saving
+            user.setPassword(passwordEncoder.encode(userDetails.getPassword()));
         }
+        // If password is null or empty, retain the old password
         return userRepository.save(user);
     }
 
@@ -78,6 +90,7 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
     }
+
     @Override
     public Optional<User> getUserByEmail(String email) {
         return userRepository.findByEmail(email);
@@ -89,7 +102,12 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         user.setFirstName(updatedUser.getFirstName());
         user.setLastName(updatedUser.getLastName());
-        // Only allow updating safe fields (not role/email/password unless you intend to)
+        // If you want to allow password update by email, handle encoding:
+        if (updatedUser.getPassword() != null && !updatedUser.getPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
+        }
+        // If you want to allow role update, uncomment:
+        // user.setRole(updatedUser.getRole());
         return userRepository.save(user);
     }
 }
@@ -114,30 +132,90 @@ public class UserServiceImpl implements UserService {
 
 
 
-//package com.codewithprojects.springsecurity.services.impl;
-//
-//import com.codewithprojects.springsecurity.repository.UserRepository;
-//import com.codewithprojects.springsecurity.services.UserService;
-//import lombok.RequiredArgsConstructor;
-//import org.springframework.security.core.userdetails.UserDetails;
-//import org.springframework.security.core.userdetails.UserDetailsService;
-//import org.springframework.security.core.userdetails.UsernameNotFoundException;
-//import org.springframework.stereotype.Service;
-//
+
+
+
+
+
+
+
+
+
 //@Service
-//@RequiredArgsConstructor
+//
 //public class UserServiceImpl implements UserService {
 //
 //    private final UserRepository userRepository;
+//    private final PasswordEncoder passwordEncoder;
+//
+//    @Autowired
+//    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+//        this.userRepository = userRepository;
+//        this.passwordEncoder = passwordEncoder;
+//    }
 //
 //    @Override
-//    public UserDetailsService userDetailsService(){
-//        return new UserDetailsService() {
-//            @Override
-//            public UserDetails loadUserByUsername(String username){
-//                return userRepository.findByEmail(username)
-//                        .orElseThrow(()-> new UsernameNotFoundException("User not found"));
-//            }
-//        };
+//    public UserDetailsService userDetailsService() {
+//        // Your existing logic
+//        return email -> userRepository.findByEmail(email)
+//                .orElseThrow(() -> new RuntimeException("User not found"));
+//    }
+//    @Override
+//    public User registerUser(User user) {
+//        Role requestedRole = user.getRole();
+//        if (requestedRole != Role.USER && requestedRole != Role.OWNER) {
+//            throw new IllegalArgumentException("Invalid role for registration. Only USER or OWNER allowed.");
+//        }
+//        user.setPassword(passwordEncoder.encode(user.getPassword()));
+//        return userRepository.save(user);
+//    }
+//
+//    @Override
+//    public User createUser(User user) {
+//        return userRepository.save(user);
+//    }
+//
+//    @Override
+//    public Optional<User> getUserById(Long id) {
+//        return Optional.empty();
+//    }
+//
+//
+//    @Override
+//    public List<User> getAllUsers() {
+//        return userRepository.findAll();
+//    }
+//
+//    @Override
+//    public User updateUser(Long id, User userDetails) {
+//        User user = userRepository.findById(id)
+//                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + id));
+//        user.setFirstName(userDetails.getFirstName());
+//        user.setLastName(userDetails.getLastName());
+//        user.setEmail(userDetails.getEmail());
+//        user.setRole(userDetails.getRole());
+//        if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
+//            user.setPassword(userDetails.getPassword());
+//        }
+//        return userRepository.save(user);
+//    }
+//
+//    @Override
+//    public void deleteUser(Long id) {
+//        userRepository.deleteById(id);
+//    }
+//    @Override
+//    public Optional<User> getUserByEmail(String email) {
+//        return userRepository.findByEmail(email);
+//    }
+//
+//    @Override
+//    public User updateUserByEmail(String email, User updatedUser) {
+//        User user = userRepository.findByEmail(email)
+//                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+//        user.setFirstName(updatedUser.getFirstName());
+//        user.setLastName(updatedUser.getLastName());
+//        // Only allow updating safe fields (not role/email/password unless you intend to)
+//        return userRepository.save(user);
 //    }
 //}

@@ -1,7 +1,8 @@
 package com.codewithprojects.springsecurity.entities;
 
-import com.codewithprojects.springsecurity.entities.TurfStatus;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.util.List;
@@ -17,23 +18,27 @@ public class Turf {
     private Long id;
 
     @Column(nullable = false)
+    @NotBlank(message = "Turf name is required")
     private String name;
 
     @Column(nullable = false)
+    @NotBlank(message = "Location is required")
     private String location;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "owner_id", referencedColumnName = "id")
+    @NotNull(message = "Owner is required")
     private User owner;
 
     @ElementCollection
-    private List<String> sportsSupported; //new table created
+    @NotNull(message = "Sports supported list is required")
+    private List<String> sportsSupported;
+
     @Column(nullable = false)
+    @NotNull(message = "Price per hour is required")
     private Double pricePerHour;
 
-    @ElementCollection
-    private List<String> availableSlots; // e.g., ["08:00-09:00", "09:00-10:00"] //new table created
-
     @Enumerated(EnumType.STRING)
+    @NotNull(message = "Turf status is required")
     private TurfStatus status;
 }
