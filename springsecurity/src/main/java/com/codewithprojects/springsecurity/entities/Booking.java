@@ -17,5 +17,9 @@ public class Booking {
 
     @ManyToOne(optional = false)
     private Slot slot;
+
+    @Enumerated(EnumType.STRING)
+    private BookingStatus status;
+
 }
 
