@@ -30,6 +30,7 @@ public class BookingService {
     private final UserRepository userRepository;
 
     private final PaymentServiceFactory paymentServiceFactory; // Inject this
+    private final NotificationService notificationService;
 
     public BookingResponseDto bookSlotWithPayment(BookingRequestDto request, PaymentRequest paymentRequest, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
@@ -53,6 +54,7 @@ public class BookingService {
 
         if (paymentResponse.isSuccess()) {
             booking.setStatus(BookingStatus.CONFIRMED);
+            notificationService.sendBookingConfirmation(userEmail, "Your booking is confirmed for slot " + slot.getId());
         } else {
             booking.setStatus(BookingStatus.CANCELLED);
         }
@@ -65,6 +67,18 @@ public class BookingService {
                 paymentResponse.getMessage()
         );
     }
+
+
+    public List<BookingResponseDto> getBookingsForUser(String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new BookingException("User not found"));
+        return bookingRepository.findByUser(user).stream()
+                .map(booking -> BookingResponseDto.fromEntity(booking, null, null))
+                .collect(Collectors.toList());
+    }
+}
+
+
 
 //    public BookingResponseDto bookSlot(BookingRequestDto request, String userEmail) {
 //        User user = userRepository.findByEmail(userEmail)
@@ -82,15 +96,3 @@ public class BookingService {
 //        logger.info("Slot booked: slotId={}, user={}", slot.getId(), user.getEmail());
 //        return BookingResponseDto.fromEntity(booking);
 //    }
-
-
-
-    public List<BookingResponseDto> getBookingsForUser(String userEmail) {
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new BookingException("User not found"));
-        return bookingRepository.findByUser(user).stream()
-                .map(booking -> BookingResponseDto.fromEntity(booking, null, null))
-                .collect(Collectors.toList());
-    }
-}
-
